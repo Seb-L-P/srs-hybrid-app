@@ -1,35 +1,58 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useEffect, useState } from 'react';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [folders, setFolders] = useState([]);
+  const [newName, setNewName] = useState('');
+
+  // Load folders on mount
+  useEffect(() => {
+    reload();
+  }, []);
+
+  const reload = () =>
+    window.electronAPI
+      .fetchFolders()
+      .then(setFolders)
+      .catch(console.error);
+
+  const addFolder = () => {
+    if (!newName.trim()) return;
+    window.electronAPI
+      .createFolder(newName.trim(), null)
+      .then(() => {
+        setNewName('');
+        reload();
+      })
+      .catch(console.error);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
+      <h1>Your Folders</h1>
+
+      <div style={{ marginBottom: 20 }}>
+        <input
+          type="text"
+          placeholder="New folder name"
+          value={newName}
+          onChange={e => setNewName(e.target.value)}
+        />
+        <button onClick={addFolder} style={{ marginLeft: 8 }}>
+          + Add Folder
         </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      {folders.length === 0 ? (
+        <p style={{ fontStyle: 'italic' }}>No folders yet.</p>
+      ) : (
+        <ul>
+          {folders.map(f => (
+            <li key={f.id}>{f.name}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;

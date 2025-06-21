@@ -1,6 +1,8 @@
 // preload.js
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // methods for file I/O, database access, etc., will go here
-})
+  fetchFolders: ()          => ipcRenderer.invoke('db-fetch-folders'),
+  createFolder: (name, pid) => ipcRenderer.invoke('db-create-folder', name, pid)
+  // later: fetchDecks, createDeck, fetchCards, etc.
+});

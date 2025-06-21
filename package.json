@@ -6,16 +6,18 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start:ui": "cd app-ui && npm run dev",
-    "start:electron": "electron .",
+    "start:electron": "NODE_ENV=development electron .",
     "start": "concurrently \"npm run start:ui\" \"wait-on http://localhost:5173 && npm run start:electron\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^36.5.0"
+    "electron": "^36.5.0",
+    "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
+    "better-sqlite3": "^12.0.0",
     "concurrently": "^9.1.2",
     "wait-on": "^8.0.3"
   }
