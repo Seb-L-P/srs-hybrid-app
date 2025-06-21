@@ -8,7 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Deck APIs
   fetchDecks:   folderId    => ipcRenderer.invoke('db-fetch-decks', folderId),
-  createDeck:   (name, fid) => ipcRenderer.invoke('db-create-deck', name, fid)
+  createDeck:   (name, fid) => ipcRenderer.invoke('db-create-deck', name, fid),
   
+  openDeckWindow: deckId => ipcRenderer.invoke('open-deck-window', deckId)
   // (Later you can add cards, reviews, settings, etc.)
 });
