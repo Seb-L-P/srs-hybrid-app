@@ -60,6 +60,18 @@ ipcMain.handle('db-create-folder', (event, name, parentId = null) => {
   return { id: info.lastInsertRowid, name, parent_id: parentId, created_at: new Date().toISOString() };
 });
 
+// Fetch decks in a given folder
+ipcMain.handle('db-fetch-decks', (event, folderId) => {
+    return db.prepare('SELECT * FROM decks WHERE folder_id = ?').all(folderId);
+  });
+  
+  // Create a new deck
+  ipcMain.handle('db-create-deck', (event, name, folderId) => {
+    const stmt = db.prepare('INSERT INTO decks (name, folder_id) VALUES (?, ?)');
+    const info = stmt.run(name, folderId);
+    return { id: info.lastInsertRowid, name, folder_id: folderId, created_at: new Date().toISOString() };
+  });
+
 // --- Create the Electron window ---
 function createWindow() {
   const win = new BrowserWindow({
