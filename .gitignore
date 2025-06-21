@@ -1,0 +1,9 @@
+# Ignore dependencies
+node_modules/
+app-ui/node_modules/
+
+# Ignore build output
+app-ui/dist/
+
+# macOS metadata
+.DS_Store

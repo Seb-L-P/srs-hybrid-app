@@ -1,0 +1,22 @@
+{
+  "name": "srs-hybrid-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:ui": "cd app-ui && npm run dev",
+    "start:electron": "electron .",
+    "start": "concurrently \"npm run start:ui\" \"wait-on http://localhost:5173 && npm run start:electron\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^36.5.0"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.2",
+    "wait-on": "^8.0.3"
+  }
+}
