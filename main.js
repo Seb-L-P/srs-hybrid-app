@@ -1,12 +1,13 @@
+// main.js
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-// --- Initialize SQLite in the user data folder ---
+// Initialize SQLite in the user data folder
 const dbPath = path.join(app.getPath('userData'), 'decks.db');
 const db = new Database(dbPath);
 
-// --- Create schema if it doesn’t exist ---
+// Create schema if it doesn’t exist
 db.exec(`
   CREATE TABLE IF NOT EXISTS folders (
     id          INTEGER PRIMARY KEY,
@@ -48,7 +49,7 @@ db.exec(`
   );
 `);
 
-// --- IPC handlers ---
+// IPC handlers
 
 // Folders
 ipcMain.handle('db-fetch-folders', () => {
@@ -108,7 +109,7 @@ ipcMain.handle('open-deck-window', (event, deckId) => {
   deckWin.loadURL(`${baseUrl}#/deck/${deckId}`);
 });
 
-// --- Create the main Electron window ---
+// Create the main Electron window
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
