@@ -127,28 +127,97 @@ function MainView() {
 }
 
 function DeckView({ deckId }) {
-  const [cards, setCards] = useState([]);
-  const [front, setFront] = useState('');
-  const [back, setBack]   = useState('');
+  const [cards, setCards]     = useState([]);
+  const [front, setFront]     = useState('');
+  const [back, setBack]       = useState('');
+  const [studyMode, setStudyMode]     = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showFront, setShowFront]     = useState(true);
 
+  // load cards when deckId changes
   useEffect(() => {
-    window.electronAPI.fetchCards(deckId).then(setCards);
+    window.electronAPI.fetchCards(deckId).then(data => {
+      setCards(data);
+      // reset study state
+      setCurrentIndex(0);
+      setShowFront(true);
+    });
   }, [deckId]);
 
   const addCard = () => {
     if (!front.trim() || !back.trim()) return;
-    window.electronAPI.createCard(front, back, deckId)
+    window.electronAPI
+      .createCard(front, back, deckId)
       .then(() => window.electronAPI.fetchCards(deckId))
-      .then(c => {
-        setCards(c);
+      .then(data => {
+        setCards(data);
         setFront('');
         setBack('');
       });
   };
 
+  // Flashcard controls
+  const flipCard = () => setShowFront(f => !f);
+  const nextCard = () => {
+    setCurrentIndex(i => (i + 1) % cards.length);
+    setShowFront(true);
+  };
+  const prevCard = () => {
+    setCurrentIndex(i => (i - 1 + cards.length) % cards.length);
+    setShowFront(true);
+  };
+
+  // Render
+  if (studyMode) {
+    if (cards.length === 0) {
+      return (
+        <div style={{ padding:20 }}>
+          <p><em>No cards to study.</em></p>
+          <button onClick={() => setStudyMode(false)}>Back to Deck</button>
+        </div>
+      );
+    }
+    const card = cards[currentIndex];
+    return (
+      <div style={{ padding:20, fontFamily:'sans-serif' }}>
+        <button onClick={() => setStudyMode(false)}>← Back to Deck</button>
+        <div
+          onClick={flipCard}
+          style={{
+            margin: '40px auto',
+            padding: 60,
+            width: 400,
+            textAlign: 'center',
+            border: '2px solid #333',
+            borderRadius: 8,
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+        >
+          <h2>{showFront ? card.front_text : card.back_text}</h2>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <button onClick={prevCard} disabled={cards.length <= 1} style={{ marginRight: 8 }}>
+            ‹ Prev
+          </button>
+          <button onClick={nextCard} disabled={cards.length <= 1} style={{ marginLeft: 8 }}>
+            Next ›
+          </button>
+          <p style={{ marginTop: 10 }}>
+            Card {currentIndex + 1} of {cards.length}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Normal deck CRUD view
   return (
     <div style={{ padding:20, fontFamily:'sans-serif' }}>
       <h1>Deck #{deckId}</h1>
+      <button onClick={() => setStudyMode(true)} disabled={cards.length === 0}>
+        ▶ Start Flashcards
+      </button>
       <ul>
         {cards.map(c => (
           <li key={c.id}>
@@ -158,22 +227,23 @@ function DeckView({ deckId }) {
       </ul>
       <div style={{ marginTop:20 }}>
         <input
-          type="text" placeholder="Front text"
+          type="text"
+          placeholder="Front text"
           value={front}
           onChange={e => setFront(e.target.value)}
         />
         <input
-          type="text" placeholder="Back text"
+          type="text"
+          placeholder="Back text"
           value={back}
           onChange={e => setBack(e.target.value)}
           style={{ marginLeft:8 }}
         />
-        <button onClick={addCard} style={{ marginLeft:8 }}>
-          + Card
-        </button>
+        <button onClick={addCard} style={{ marginLeft:8 }}>+ Card</button>
       </div>
     </div>
   );
 }
+
 
 export default App;
