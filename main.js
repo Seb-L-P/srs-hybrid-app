@@ -1,5 +1,5 @@
 // main.js
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const Database = require('better-sqlite3');
 
@@ -49,56 +49,67 @@ db.exec(`
   );
 `);
 
-// IPC handlers
-
 // Folders
-ipcMain.handle('db-fetch-folders', () => {
-  return db.prepare('SELECT * FROM folders').all();
-});
-ipcMain.handle('db-create-folder', (event, name, parentId = null) => {
+ipcMain.handle('db-fetch-folders', () =>
+  db.prepare('SELECT * FROM folders').all()
+);
+ipcMain.handle('db-create-folder', (e, name, parentId = null) => {
   const stmt = db.prepare('INSERT INTO folders (name, parent_id) VALUES (?, ?)');
   const info = stmt.run(name, parentId);
   return { id: info.lastInsertRowid, name, parent_id: parentId, created_at: new Date().toISOString() };
 });
 
 // Decks
-ipcMain.handle('db-fetch-decks', (event, folderId) => {
-  return db.prepare('SELECT * FROM decks WHERE folder_id = ?').all(folderId);
-});
-ipcMain.handle('db-create-deck', (event, name, folderId) => {
+ipcMain.handle('db-fetch-decks', (e, folderId) =>
+  db.prepare('SELECT * FROM decks WHERE folder_id = ?').all(folderId)
+);
+ipcMain.handle('db-create-deck', (e, name, folderId) => {
   const stmt = db.prepare('INSERT INTO decks (name, folder_id) VALUES (?, ?)');
   const info = stmt.run(name, folderId);
   return { id: info.lastInsertRowid, name, folder_id: folderId, created_at: new Date().toISOString() };
 });
 
 // Cards
-ipcMain.handle('db-fetch-cards', (event, deckId) => {
-  return db.prepare('SELECT * FROM cards WHERE deck_id = ?').all(deckId);
-});
-ipcMain.handle('db-create-card', (event, frontText, backText, deckId) => {
+ipcMain.handle('db-fetch-cards', (e, deckId) =>
+  db.prepare('SELECT * FROM cards WHERE deck_id = ?').all(deckId)
+);
+ipcMain.handle('db-create-card', (e, frontText, backText, deckId, mediaPaths = []) => {
   const stmt = db.prepare(
-    'INSERT INTO cards (front_text, back_text, deck_id) VALUES (?, ?, ?)'
+    'INSERT INTO cards (front_text, back_text, deck_id, media_json) VALUES (?, ?, ?, ?)'
   );
-  const info = stmt.run(frontText, backText, deckId);
+  const info = stmt.run(frontText, backText, deckId, JSON.stringify(mediaPaths));
   return {
     id: info.lastInsertRowid,
     front_text: frontText,
     back_text: backText,
     deck_id: deckId,
-    media_json: '[]',
+    media_json: JSON.stringify(mediaPaths),
     created_at: new Date().toISOString(),
   };
 });
 
-// Open a deck in its own window
-ipcMain.handle('open-deck-window', (event, deckId) => {
+// Media picker
+ipcMain.handle('select-media', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Select media files',
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'Images & Audio & Video', extensions: ['png','jpg','jpeg','gif','mp3','wav','mp4','mov'] }
+    ]
+  });
+  return canceled ? [] : filePaths;
+});
+
+// Open deck in its own window
+ipcMain.handle('open-deck-window', (e, deckId) => {
   const deckWin = new BrowserWindow({
     width: 1000,
     height: 700,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false
     }
   });
 
@@ -109,7 +120,7 @@ ipcMain.handle('open-deck-window', (event, deckId) => {
   deckWin.loadURL(`${baseUrl}#/deck/${deckId}`);
 });
 
-// Create the main Electron window
+// Create main window
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -117,7 +128,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false
     }
   });
 
@@ -129,7 +141,6 @@ function createWindow() {
 }
 
 app.whenReady().then(createWindow);
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
