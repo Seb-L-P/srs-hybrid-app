@@ -1,7 +1,7 @@
-// App.jsx
+// app-ui/src/App.jsx
 import React, { useEffect, useState } from 'react';
 
-// Extract deckId from URL hash "#/deck/<id>"
+// Helper to parse deckId from the URL hash (e.g. "#/deck/3")
 function getDeckIdFromHash() {
   const m = window.location.hash.match(/^#\/deck\/(\d+)$/);
   return m ? Number(m[1]) : null;
@@ -34,76 +34,106 @@ function App() {
 
 function MainView() {
   const [folders, setFolders] = useState([]);
+  const [selectedFolder, setSelected] = useState(null);
   const [decks, setDecks] = useState([]);
-  const [selectedFolder, setSelectedFolder] = useState(null);
   const [newName, setNewName] = useState('');
 
+  // Load folders on mount
   useEffect(() => {
-    window.electronAPI.fetchFolders().then(setFolders);
+    reloadFolders();
   }, []);
 
+  const reloadFolders = () =>
+    window.electronAPI.fetchFolders().then(setFolders);
+
+  // Load decks when folder changes
   useEffect(() => {
-    if (selectedFolder !== null) {
+    if (selectedFolder != null) {
       window.electronAPI.fetchDecks(selectedFolder).then(setDecks);
     } else {
       setDecks([]);
     }
   }, [selectedFolder]);
 
+  // Recursive folder node
+  const FolderNode = ({ node }) => {
+    const children = folders.filter(f => f.parent_id === node.id);
+    const isSelected = selectedFolder === node.id;
+    return (
+      <li>
+        <div>
+          <button
+            onClick={() => setSelected(node.id)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: isSelected ? 'bold' : 'normal'
+            }}
+          >
+            {node.name}
+          </button>
+        </div>
+        {children.length > 0 && (
+          <ul style={{ marginLeft: 16, listStyle: 'none', paddingLeft: 0 }}>
+            {children.map(child => (
+              <FolderNode key={child.id} node={child} />
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  const roots = folders.filter(f => f.parent_id == null);
+
   const addFolder = () => {
     if (!newName.trim()) return;
     window.electronAPI
-      .createFolder(newName, null)
-      .then(() => window.electronAPI.fetchFolders())
-      .then(data => {
-        setFolders(data);
+      .createFolder(newName.trim(), selectedFolder)
+      .then(() => {
         setNewName('');
+        reloadFolders();
       });
   };
 
   const addDeck = () => {
-    if (!newName.trim() || selectedFolder === null) return;
+    if (!newName.trim() || selectedFolder == null) return;
     window.electronAPI
-      .createDeck(newName, selectedFolder)
+      .createDeck(newName.trim(), selectedFolder)
       .then(() => window.electronAPI.fetchDecks(selectedFolder))
-      .then(data => {
-        setDecks(data);
-        setNewName('');
-      });
+      .then(setDecks);
+    setNewName('');
   };
 
   return (
     <div style={{ display: 'flex', padding: 20, fontFamily: 'sans-serif' }}>
-      <div style={{ width: 200, marginRight: 40 }}>
+      {/* Sidebar: Nested Folders */}
+      <div style={{ width: 250, marginRight: 40 }}>
         <h2>Folders</h2>
-        <ul>
-          {folders.map(f => (
-            <li key={f.id}>
-              <button
-                onClick={() => setSelectedFolder(f.id)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: selectedFolder === f.id ? '#06f' : '#000'
-                }}
-              >
-                {f.name}
-              </button>
-            </li>
+        <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
+          {roots.map(root => (
+            <FolderNode key={root.id} node={root} />
           ))}
         </ul>
-        <input
-          type="text"
-          placeholder="New folder"
-          value={newName}
-          onChange={e => setNewName(e.target.value)}
-        />
-        <button onClick={addFolder} style={{ marginLeft: 8 }}>
-          + Folder
-        </button>
+        <div style={{ marginTop: 16 }}>
+          <input
+            type="text"
+            placeholder={
+              selectedFolder
+                ? `New sub-folder in "${folders.find(f=>f.id===selectedFolder)?.name}"`
+                : 'New root folder'
+            }
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+          />
+          <button onClick={addFolder} style={{ marginLeft: 8 }}>
+            + Folder
+          </button>
+        </div>
       </div>
 
+      {/* Main Panel: Decks */}
       <div style={{ flex: 1 }}>
         <h2>
           {selectedFolder
@@ -131,15 +161,17 @@ function MainView() {
                 </li>
               ))}
             </ul>
-            <input
-              type="text"
-              placeholder="New deck"
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-            />
-            <button onClick={addDeck} style={{ marginLeft: 8 }}>
-              + Deck
-            </button>
+            <div style={{ marginTop: 16 }}>
+              <input
+                type="text"
+                placeholder="New deck"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+              />
+              <button onClick={addDeck} style={{ marginLeft: 8 }}>
+                + Deck
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -167,7 +199,7 @@ function DeckView({ deckId }) {
   const addCard = () => {
     if (!front.trim() || !back.trim()) return;
     window.electronAPI
-      .createCard(front, back, deckId, mediaPaths)
+      .createCard(front.trim(), back.trim(), deckId, mediaPaths)
       .then(() => window.electronAPI.fetchCards(deckId))
       .then(data => {
         setCards(data);
@@ -196,7 +228,7 @@ function DeckView({ deckId }) {
   if (studyMode) {
     if (cards.length === 0) {
       return (
-        <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
+        <div style={{ padding: 20 }}>
           <button onClick={() => setStudyMode(false)}>← Back</button>
           <p><em>No cards to study.</em></p>
         </div>
